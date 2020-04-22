@@ -1,14 +1,18 @@
 import socket
 import threading
 
+socketInstance = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 socketLock = threading.Lock()
 
+
 def read():
-    readData = ""
-    with socketLock:
-        readData = socketInstance.recv(1024)
+    print("Waiting for new messages\n")
+    is_active = True
+    while is_active:
+        with socketLock:
+            readData = str(socketInstance.recv(1024), encoding="utf8")
+            print(readData)
     # Consider making a printing lock so that you can easily type without new messages crowding you
-    print(readData)
 
 
 while True:
@@ -24,14 +28,14 @@ while True:
             print("Port needs to be an integer")
     userName = input("Username? ")
     # Create a socket with TCP
-    # try:
-    socketInstance = socket.create_connection(("localhost", 1234))
-    socketInstance.sendall(bytes("/username"))
-        # break
-    # except Exception as e:
-    #     print("Failed to connect", e)
+    try:
+        socketInstance = socket.create_connection((ipAddr, portNum))
+        socketInstance.sendall(bytes("/username" + " " + userName, encoding="utf8"))
+        break
+    except Exception as e:
+        print("Failed to connect", e)
 
-listenThread = threading.Thread(target=read())
+listenThread = threading.Thread(target=read)
 listenThread.daemon = True
 listenThread.start()
 while True:
@@ -41,19 +45,19 @@ while True:
             # quit
             pass
         elif inputText == "/listusers":
-            socketInstance.send(inputText)
+            socketInstance.sendall(bytes(inputText, 'ascii'))
         elif inputText.startswith("/message"):
             inputList = inputText.split(" ")
             if len(inputList) < 3:
                 print("bad")
-            socketInstance.send(inputText)
+            socketInstance.sendall(bytes(inputText, 'ascii'))
         else:
             if inputText != "/help":
-                print("Unrecognized Command\n")
+                print("Unrecognized Command")
             print(
                 "/help -> Display this message\n"
                 "/listusers -> List all activate users\n"
                 "/message <USERNAME> <MESSAGE> -> Send a MESSAGE to USERNAME e.g. `/message ted Hello there`\n"
             )
     else:
-        socketInstance.send(inputText)
+        socketInstance.sendall(bytes(inputText, 'ascii'))
