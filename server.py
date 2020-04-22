@@ -1,14 +1,13 @@
 import threading
 import socket
-import socketserver
 
 userDict = {}
 dictLock = threading.Lock()
 
 
-def addUser(userName, address, port):
+def addUser(userName, userSocket):
     with dictLock:
-        userDict[userName] = (address, port)
+        userDict[userName] = userSocket
 
 
 def removeUser(userName):
@@ -24,7 +23,7 @@ def userExists(userName):
             return False
 
 
-def getUser(userName):
+def getUserSocket(userName):
     with dictLock:
         return userDict[userName]
 
@@ -34,44 +33,41 @@ def getAllUsers():
         return userDict
 
 
-def getAllAddresses():
+def getAllUserSockets():
     with dictLock:
         return userDict.values()
 
 
-def handleConnection(connection, address, port):
+def handleConnection(connectionSocket):
     is_active = True
     while is_active:
-        data = str(connection.recv(1024), encoding="utf8")
+        data = str(connectionSocket.recv(1024), encoding="utf8")
         print(data)
         if data[0] == "/":
             if data == "/listusers":
-                connection.sendall(bytes(str(getAllUsers()), encoding="utf8"))
+                connectionSocket.sendall(bytes(str(getAllUsers()), encoding="utf8"))
             elif data.startswith("/username"):
                 # Fix only unique usernames
                 newUserName = data.split(" ")[1]
-                addUser(newUserName, address, port)
-                connection.sendall(bytes("Registered", encoding="utf8"))
+                addUser(newUserName, connectionSocket)
+                connectionSocket.sendall(bytes("Registered", encoding="utf8"))
                 print("New User Registered")
             elif data.startswith("/exit"):
                 leavingUserName = data.split(" ")[1]
                 if userExists(leavingUserName):
                     removeUser(leavingUserName)
-                connection.close()
+                connectionSocket.close()
                 is_active = False
             elif data.startswith("/message"):
                 inputList = data.split(" ")
                 if userExists(inputList[1]):
-                    directMessageSocket = socket.create_connection(getUser(inputList[1]))
+                    directMessageSocket = getUserSocket(inputList[1])
                     directMessageSocket.sendall(bytes(" ".join(inputList[2:]), encoding="utf8"))
             else:
-                connection.sendall(bytes("Server does not recognize this command"))
+                connectionSocket.sendall(bytes("Server does not recognize this command"))
         else:
-            for userAddress in getAllAddresses():
-                if userAddress == (address, port):
-                    connection.sendall(bytes(data, encoding="utf8"))
-                allMessageSocket = socket.create_connection(userAddress)
-                allMessageSocket.sendall(bytes(data, encoding="utf8"))
+            for userSocket in getAllUserSockets():
+                userSocket.sendall(bytes(data, encoding="utf8"))
 
 
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -93,7 +89,7 @@ while True:
     ip, port = str(address[0]), str(address[1])
     print("Connected with " + ip + ":" + port)
     try:
-        threading.Thread(target=handleConnection, args=(connection, ip, port)).start()
+        threading.Thread(target=handleConnection, args=(connection,)).start()
     except:
         print("Thread did not start.")
 
