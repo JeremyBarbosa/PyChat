@@ -22,7 +22,7 @@ def listenToServer():
 # Print the help text. Instruction on how to use Client
 def helpText():
     print(
-        "Type any message and hit enter to send to all user!\n"
+        "Type any message and hit enter to send to all users!\n"
         "/help -> Display this message\n"
         "/listusers -> List all activate users\n"
         "/message <USERNAME> <MESSAGE> -> Send a MESSAGE to only USERNAME e.g. `/message ted Hello there`\n"
