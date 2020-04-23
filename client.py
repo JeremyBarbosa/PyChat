@@ -1,16 +1,19 @@
 import socket
 import threading
+import time
 
 socketInstance = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-socketLock = threading.Lock()
 
 
 def read():
-    print("Waiting for new messages\n")
     is_active = True
     while is_active:
-        with socketLock:
-            readData = str(socketInstance.recv(1024), encoding="utf8")
+        readData = str(socketInstance.recv(1024), encoding="utf8")
+        if readData == "/serverQuit":
+            print("Server Closing")
+            print("Enter '/exit' to safely close client")
+            break
+        else:
             print(readData)
     # Consider making a printing lock so that you can easily type without new messages crowding you
 
@@ -26,31 +29,48 @@ while True:
             break
         except ValueError:
             print("Port needs to be an integer")
-    userName = input("Username? ")
+    userName = input("Username? ").strip()
+    if userName == "":
+        print("Username can not be blank")
+        continue
     # Create a socket with TCP
     try:
         socketInstance = socket.create_connection((ipAddr, portNum))
         socketInstance.sendall(bytes("/username" + " " + userName, encoding="utf8"))
+        readData = str(socketInstance.recv(1024), encoding="utf8")
+        if readData == "/taken":
+            print("Username is taken, pick another")
+            continue
         break
     except Exception as e:
-        print("Failed to connect", e)
+        print("Failed to connect: ", e)
 
 listenThread = threading.Thread(target=read)
 listenThread.daemon = True
 listenThread.start()
 while True:
-    inputText = input("Send Message: ").strip()
-    if inputText[0] == "/":
+    inputText = ""
+    try:
+        time.sleep(.1)
+        inputText = input(">>> ").strip()
+    except KeyboardInterrupt:
+        print("Exiting...")
+        socketInstance.sendall(bytes("/exit"+" "+userName, encoding="utf8"))
+        socketInstance.close()
+        break
+    if inputText != "" and inputText[0] == "/":
         if inputText == "/exit":
-            # quit
-            pass
+            print("Exiting...")
+            socketInstance.sendall(bytes("/exit"+" "+userName, encoding="utf8"))
+            socketInstance.close()
+            break
         elif inputText == "/listusers":
-            socketInstance.sendall(bytes(inputText, 'ascii'))
+            socketInstance.sendall(bytes(inputText, encoding="utf8"))
         elif inputText.startswith("/message"):
             inputList = inputText.split(" ")
             if len(inputList) < 3:
-                print("bad")
-            socketInstance.sendall(bytes(inputText, 'ascii'))
+                print("/message <USERNAME> <MESSAGE> -> Send a MESSAGE to USERNAME e.g. `/message ted Hello there`")
+            socketInstance.sendall(bytes(inputText, encoding="utf8"))
         else:
             if inputText != "/help":
                 print("Unrecognized Command")
@@ -58,6 +78,7 @@ while True:
                 "/help -> Display this message\n"
                 "/listusers -> List all activate users\n"
                 "/message <USERNAME> <MESSAGE> -> Send a MESSAGE to USERNAME e.g. `/message ted Hello there`\n"
+                "/exit -> Safely close this client"
             )
     else:
         socketInstance.sendall(bytes(inputText, 'ascii'))
