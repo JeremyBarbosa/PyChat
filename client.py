@@ -95,7 +95,7 @@ while True:
         # Always sleep for the tiniest amount before asking for input such that messages are rendered first
         time.sleep(.1)
         inputText = input(">>> ").strip()
-        # Handle "/exit" here as it is most convenient as it has the same behavior as the exception handler
+        # Handle "/exit" here as it is most convenient and it has the same behavior as the exception handler
         if inputText == "/exit":
             raise KeyboardInterrupt
 
